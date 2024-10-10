@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#define PORT 8080
+#define PORT 80
 
 int main(int argc, char *argv[]){
 
@@ -16,7 +16,7 @@ int main(int argc, char *argv[]){
   }
 
   // setup
-  // set address port 8080 
+  // set address port 80 
   int opt = 1;
   int setsockopt_fd = setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt));
   if (setsockopt_fd < 0){
@@ -27,7 +27,7 @@ int main(int argc, char *argv[]){
   struct sockaddr_in address;  
   address.sin_family = AF_INET;
   address.sin_port = htons(PORT);
-  inet_pton(AF_INET, "10.0.2.15", &address.sin_addr);
+  inet_pton(AF_INET, "127.0.0.1", &address.sin_addr);
   
   // bind()
   int bindfd = bind(socketfd, (struct sockaddr*)&address, sizeof address); 
@@ -44,7 +44,17 @@ int main(int argc, char *argv[]){
   }
 
   // accept()
-  
+  socklen_t addr_size = sizeof address;
+  int acceptfd = accept(socketfd, (struct sockaddr*)&address, &addr_size);
+  if (acceptfd < 0){
+    perror("accept failed");
+    exit(EXIT_FAILURE);
+  }
+  char *hello = "Hi from the server!"; 
+  printf("%s\n", hello);
+
+  // close() 
+  shutdown(socketfd, 0); 
   return EXIT_SUCCESS;
 
 }
