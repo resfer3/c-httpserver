@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <string.h>
 #define PORT 80
 
 int main(int argc, char *argv[]){
@@ -49,12 +50,37 @@ int main(int argc, char *argv[]){
   if (acceptfd < 0){
     perror("accept failed");
     exit(EXIT_FAILURE);
+  } 
+  /*
+  char *connected = "Server Connected!"; 
+  int len, bytes_sent;
+  len = strlen(connected);
+  bytes_sent = send(socketfd, connected, len, 0);
+  */
+  // recv() data and print it out
+  char buffer[1024];
+  int len = 1024;
+  ssize_t bytes_recv = recv(acceptfd, buffer, len, 0); 
+  if (bytes_recv < 0){
+    perror("recv failed");
   }
-  char *hello = "Hi from the server!"; 
-  printf("%s\n", hello);
+
+  printf("%s\n", buffer);
 
   // close() 
   shutdown(socketfd, 0); 
   return EXIT_SUCCESS;
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
