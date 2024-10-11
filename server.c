@@ -19,7 +19,7 @@ int main(int argc, char *argv[]){
   // setup
   // set address port 80 
   int opt = 1;
-  int setsockopt_fd = setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt));
+  int setsockopt_fd = setsockopt(socketfd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
   if (setsockopt_fd < 0){
     perror("setsockopt failed");
     exit(EXIT_FAILURE);
