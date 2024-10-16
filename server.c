@@ -51,6 +51,12 @@ int main(int argc, char *argv[]){
     perror("accept failed");
     exit(EXIT_FAILURE);
   } 
+
+  /*
+    Request GET
+    Response 200 OK
+  */
+  char *request = "GET / HTTP/1.1";
   /*
   char *connected = "Server Connected!"; 
   int len, bytes_sent;
@@ -58,14 +64,21 @@ int main(int argc, char *argv[]){
   bytes_sent = send(socketfd, connected, len, 0);
   */
   // recv() data and print it out
-  char buffer[1024];
+  char buffer[1024] = {0};
   int len = 1024;
   ssize_t bytes_recv = recv(acceptfd, buffer, len, 0); 
+
   if (bytes_recv < 0){
     perror("recv failed");
   }
+  // finding the pattern
+  char *msg = "HTTP/1.1 200 OK\r\n\r\nRequested path: <the path>\r\n";
+  if (strstr(buffer, request)){
+    ssize_t bytes_send = send(acceptfd, msg, strlen(msg), 0);
+  } 
 
-  printf("%s\n", buffer);
+  printf("%s", buffer);
+  printf("%s", msg);
 
   // close() 
   shutdown(socketfd, 0); 
