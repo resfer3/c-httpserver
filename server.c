@@ -7,6 +7,8 @@
 #include <string.h>
 #define PORT 80
 
+int openHTML(int *acceptfd);
+
 int main(int argc, char *argv[]){
 
   // create socket()
@@ -72,13 +74,20 @@ int main(int argc, char *argv[]){
     perror("recv failed");
   }
   // finding the pattern
-  char *msg = "HTTP/1.1 200 OK\r\n\r\nRequested path: <the path>\r\n";
+  char *msg_path1 = "HTTP/1.1 200 OK\r\n\r\n";
   if (strstr(buffer, request)){
-    ssize_t bytes_send = send(acceptfd, msg, strlen(msg), 0);
+    ssize_t bytes_send = send(acceptfd, msg_path1, strlen(msg_path1), 0);
   } 
-
+  // TODO: Implement correct requests
+  // debug
   printf("%s", buffer);
-  printf("%s", msg);
+  printf("%s", msg_path1);
+
+  /*
+    www/index.html
+  */
+  openHTML(&acceptfd);
+
 
   // close() 
   shutdown(socketfd, 0); 
@@ -86,8 +95,30 @@ int main(int argc, char *argv[]){
 
 }
 
+// open html read, and send it
+int openHTML(int *acceptfd){
+  char *buffer;
+  long file_length = 0;
+  FILE *fp = fopen("www/index.html", "rb");
+  if (fp == NULL){
+    perror("Error opening file");
+    return 1;
+  }
+  fseek(fp, 0, SEEK_END);
+  file_length = ftell(fp);
+  rewind(fp);
+  buffer = (char *) malloc(file_length * sizeof(char));
+  fread(buffer, file_length, 1, fp);
+  if (send(*acceptfd, buffer, file_length, 0)){
+    perror("send failed");
+    exit(EXIT_FAILURE);
+  }
 
-
+  printf("count of bytes in file: %ld\n", file_length);
+  //char storage[file_length];
+  fclose(fp);
+  return 0;
+}
 
 
 
