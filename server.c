@@ -5,7 +5,18 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
+
+// PORT USED
 #define PORT 80
+
+// Requests that are valid
+#define REQUEST_VALID1 "GET / HTTP/1.1"
+#define REQUEST_VALID2 "GET /index.html HTTP/1.1"
+
+// Responses
+//#define RESPONSEPATH "HTTP/1.1 200 OK\r\n\r\nRequested path: <the path>\r\n"
+#define RESPONSE200 "HTTP/1.1 200 OK\r\n\r\n"
+#define RESPONSE400 "HTTP/1.1 400 Not Found\r\n\r\n"
 
 int openHTML(int *acceptfd);
 
@@ -58,7 +69,6 @@ int main(int argc, char *argv[]){
     Request GET
     Response 200 OK
   */
-  char *request = "GET / HTTP/1.1";
   /*
   char *connected = "Server Connected!"; 
   int len, bytes_sent;
@@ -74,19 +84,30 @@ int main(int argc, char *argv[]){
     perror("recv failed");
   }
   // finding the pattern
-  char *msg_path1 = "HTTP/1.1 200 OK\r\n\r\n";
-  if (strstr(buffer, request)){
-    ssize_t bytes_send = send(acceptfd, msg_path1, strlen(msg_path1), 0);
-  } 
+  ssize_t bytes_send;
+  if (strstr(buffer, REQUEST_VALID1) || strstr(buffer, REQUEST_VALID2) ){
+    bytes_send = send(acceptfd, RESPONSE200, strlen(RESPONSE200), 0);
+    printf("%s", RESPONSE200);
+  } else { 
+    bytes_send = send(acceptfd, RESPONSE400, strlen(RESPONSE400), 0); 
+    printf("%s", RESPONSE400);
+  }
   // TODO: Implement correct requests
+  /*
+    #define RESPONSE200 "HTTP/1.1 200 OK\r\n\r\n"
+    #define RESPONSE400 "HTTP/1.1 400 Not Found\r\n\r\n"
+  */
   // debug
   printf("%s", buffer);
-  printf("%s", msg_path1);
 
   /*
     www/index.html
   */
-  openHTML(&acceptfd);
+  if (!(openHTML(&acceptfd))){
+    perror("Error opening file");
+    exit(EXIT_FAILURE);
+  }
+
 
 
   // close() 
@@ -102,14 +123,14 @@ int openHTML(int *acceptfd){
   FILE *fp = fopen("www/index.html", "rb");
   if (fp == NULL){
     perror("Error opening file");
-    return 1;
+    exit(EXIT_FAILURE);
   }
   fseek(fp, 0, SEEK_END);
   file_length = ftell(fp);
   rewind(fp);
   buffer = (char *) malloc(file_length * sizeof(char));
   fread(buffer, file_length, 1, fp);
-  if (send(*acceptfd, buffer, file_length, 0)){
+  if (!(send(*acceptfd, buffer, file_length, 0))){
     perror("send failed");
     exit(EXIT_FAILURE);
   }
@@ -117,7 +138,7 @@ int openHTML(int *acceptfd){
   printf("count of bytes in file: %ld\n", file_length);
   //char storage[file_length];
   fclose(fp);
-  return 0;
+  return EXIT_SUCCESS;
 }
 
 
