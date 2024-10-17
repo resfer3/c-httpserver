@@ -103,11 +103,7 @@ int main(int argc, char *argv[]){
   /*
     www/index.html
   */
-  if (!(openHTML(&acceptfd))){
-    perror("Error opening file");
-    exit(EXIT_FAILURE);
-  }
-
+  openHTML(&acceptfd);
 
 
   // close() 
