@@ -91,8 +91,9 @@ int main(int argc, char *argv[]){
   } else { 
     bytes_send = send(acceptfd, RESPONSE400, strlen(RESPONSE400), 0); 
     printf("%s", RESPONSE400);
+    exit(EXIT_FAILURE);
   }
-  // TODO: Implement correct requests
+  // TODO: Implement correct requests -> Done
   /*
     #define RESPONSE200 "HTTP/1.1 200 OK\r\n\r\n"
     #define RESPONSE400 "HTTP/1.1 400 Not Found\r\n\r\n"
