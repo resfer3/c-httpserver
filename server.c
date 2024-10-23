@@ -5,6 +5,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <pthread.h>
+#include <unistd.h>
+
+
+// THREADS USED
+#define NUM_THREADS 10
 
 // PORT USED
 #define PORT 80
@@ -19,6 +25,9 @@
 #define RESPONSE400 "HTTP/1.1 400 Not Found\r\n\r\n"
 
 int openHTML(int *acceptfd);
+int response_http(int *acceptfd, char *buffer);
+void thread_send(void *thread_id);
+void counter_pthread(void *s);
 
 int main(int argc, char *argv[]){
 
@@ -76,41 +85,76 @@ int main(int argc, char *argv[]){
   bytes_sent = send(socketfd, connected, len, 0);
   */
   // recv() data and print it out
-  char buffer[1024] = {0};
-  int len = 1024;
-  ssize_t bytes_recv = recv(acceptfd, buffer, len, 0); 
+  
+  // allocate for threads
+  pthread_t thread_id[NUM_THREADS];
+  int rc;
+  // loop for multithreading
+  for (long i = 0; i < NUM_THREADS; i++){
+    char buffer[1024] = {0};
+    int len = 1024;
+    ssize_t bytes_recv = recv(acceptfd, buffer, len, 0); 
+    printf("%s\n", buffer);
 
-  if (bytes_recv < 0){
-    perror("recv failed");
+    if (bytes_recv < 0){
+      perror("recv failed");
+    }
+    rc = pthread_create(&thread_id[i], NULL, counter_pthread, (void*) i);
+    if (rc < 0){
+      perror("ERROR creating thread");
+      return EXIT_FAILURE;
+    }
+    sleep(5);
+    int response = response_http(&acceptfd, buffer);
+    if (response < 0){
+      return EXIT_FAILURE;
+    }
+    int render_html = openHTML(&acceptfd);
+    if (render_html < 0){
+      perror("couldn't load html");
+      return EXIT_FAILURE;
+    }
+    printf("%s", buffer);
   }
   // finding the pattern
-  ssize_t bytes_send;
-  if (strstr(buffer, REQUEST_VALID1) || strstr(buffer, REQUEST_VALID2) ){
-    bytes_send = send(acceptfd, RESPONSE200, strlen(RESPONSE200), 0);
-    printf("%s", RESPONSE200);
-  } else { 
-    bytes_send = send(acceptfd, RESPONSE400, strlen(RESPONSE400), 0); 
-    printf("%s", RESPONSE400);
-    exit(EXIT_FAILURE);
-  }
   // TODO: Implement correct requests -> Done
   /*
     #define RESPONSE200 "HTTP/1.1 200 OK\r\n\r\n"
     #define RESPONSE400 "HTTP/1.1 400 Not Found\r\n\r\n"
   */
   // debug
-  printf("%s", buffer);
-
+ 
+  // int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg)
   /*
     www/index.html
   */
-  openHTML(&acceptfd);
 
 
   // close() 
   shutdown(socketfd, 0); 
+  pthread_exit(NULL);
   return EXIT_SUCCESS;
 
+}
+
+void counter_pthread(void *s){
+  sleep(5);
+  long start = (long)s;
+  pthread_exit(NULL);
+}
+
+/* find the pattern in request, and send back html */
+int response_http(int *acceptfd, char *buffer){
+  ssize_t bytes_send;
+  if (strstr(buffer, REQUEST_VALID1) || strstr(buffer, REQUEST_VALID2) ){
+    bytes_send = send(*acceptfd, RESPONSE200, strlen(RESPONSE200), 0);
+    printf("%s", RESPONSE200);
+    return EXIT_SUCCESS;
+  } else { 
+    bytes_send = send(*acceptfd, RESPONSE400, strlen(RESPONSE400), 0); 
+    printf("%s", RESPONSE400);
+    return EXIT_FAILURE;
+  }
 }
 
 // open html read, and send it
@@ -120,7 +164,7 @@ int openHTML(int *acceptfd){
   FILE *fp = fopen("www/index.html", "rb");
   if (fp == NULL){
     perror("Error opening file");
-    exit(EXIT_FAILURE);
+    return EXIT_FAILURE;
   }
   fseek(fp, 0, SEEK_END);
   file_length = ftell(fp);
@@ -129,14 +173,16 @@ int openHTML(int *acceptfd){
   fread(buffer, file_length, 1, fp);
   if (!(send(*acceptfd, buffer, file_length, 0))){
     perror("send failed");
-    exit(EXIT_FAILURE);
+    return EXIT_FAILURE; 
   }
 
   printf("count of bytes in file: %ld\n", file_length);
   //char storage[file_length];
+  free(buffer);
   fclose(fp);
   return EXIT_SUCCESS;
 }
+
 
 
 
