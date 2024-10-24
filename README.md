@@ -1,8 +1,11 @@
 # c-httpserver
 A basic http server.
 
-After this project, the idea is to use this server to use for my own terminal-chat all built in c.
+Some network programming, some multithreading, really fun to hit these really fundamentals points and experiment a little.
+I could add support for running code to generate dynamic content, but that's for later. I'll come back to add that feature in the feature.
+I completed the project, which is a basic web server that serves html documents that's good for now. NOW! to move on to greater things.
 
+### Notes
 netstat -tulpn
 kill <pid>
 

@@ -1,2 +1,5 @@
-server.dSYM
+# compilation binaries
+thread_test
+server
+# directory
 www
