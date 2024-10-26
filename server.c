@@ -10,7 +10,7 @@
 
 
 // THREADS USED
-#define NUM_THREADS 5
+#define NUM_THREADS 7
 
 // PORT USED
 #define PORT 80
@@ -46,22 +46,20 @@ int main(int argc, char *argv[]){
   // allocate for threads
   pthread_t thread_id[NUM_THREADS];
   int rc;
+
+  // TODO: REFACTOR -> move server logic back into main. And implement threads
   
   // loop for multithreading
-  for (long i = 0; i < NUM_THREADS; i++){
-    printf("thread started #main #%ld\n", i);
-    // start thread
-    rc = pthread_create(&thread_id[i], NULL, counter_pthread, (void*) i);
+  for (int i = 0; i < NUM_THREADS; i++){
+    rc = pthread_create(&thread_id[i], NULL, counter_pthread, NULL);
     if (rc < 0){
-      perror("ERROR creating thread");
-      return EXIT_FAILURE;
+      perror("Error creating thread");
+      continue;
     }
-    // run server within thread
-    server_logic();
+    pthread_detach(thread_id[i]);
   }
-  
+
   // close() 
-  pthread_exit(NULL);
   return EXIT_SUCCESS;
 
 }
@@ -69,6 +67,8 @@ int main(int argc, char *argv[]){
 void* counter_pthread(void *s){
   long tid;
   tid = (long)s;
+  server_logic();
+  printf("Thread Id: %ld\n", tid);
   pthread_exit(NULL);
 }
 // create a server
@@ -90,6 +90,7 @@ int server_logic(){
   }
   // address format
   struct sockaddr_in address;  
+  memset(&address, 0, sizeof address);
   address.sin_family = AF_INET;
   address.sin_port = htons(PORT);
   inet_pton(AF_INET, "127.0.0.1", &address.sin_addr);
@@ -102,47 +103,51 @@ int server_logic(){
   }
 
   // listen()
-  int listenfd = listen(socketfd, 0);
+  int listenfd = listen(socketfd, NUM_THREADS);
   if (listenfd < 0){
     perror("listen failed");
     exit(EXIT_FAILURE);
   }
 
-  // accept()
-  socklen_t addr_size = sizeof address;
-  int acceptfd = accept(socketfd, (struct sockaddr*)&address, &addr_size);
-  if (acceptfd < 0){
-    perror("accept failed");
-    exit(EXIT_FAILURE);
-  } 
-  // allocate for requests buffer
-  char buffer[1024];
-  int len = 1024;
-  // recv request
-  ssize_t bytes_recv = recv(acceptfd, buffer, len, 0); 
-  printf("bytes_recv: %ld\n", bytes_recv);
-  if (bytes_recv < 0){
-    perror("recv error:");
-    return EXIT_FAILURE;
-  }
-  printf("%s\n", buffer);
+  printf("server listening on port %d\n", PORT);
 
-  if (bytes_recv < 0){
-    perror("recv failed");
+  while(1){
+    // accept()
+    socklen_t addr_size = sizeof address;
+    int acceptfd = accept(socketfd, (struct sockaddr*)&address, &addr_size);
+    if (acceptfd < 0){
+      perror("accept failed");
+      exit(EXIT_FAILURE);
+    } 
+    // allocate for requests buffer
+    char buffer[1024];
+    int len = 1024;
+    // recv request
+    ssize_t bytes_recv = recv(acceptfd, buffer, len, 0); 
+    printf("bytes_recv: %ld\n", bytes_recv);
+    if (bytes_recv < 0){
+      perror("recv error:");
+      return EXIT_FAILURE;
+    }
+    printf("%s\n", buffer);
+
+    if (bytes_recv < 0){
+      perror("recv failed");
+    }
+   
+   // send response 
+    int response = response_http(&acceptfd, buffer);
+    printf("response: %i\n", response);
+    if (response == 0){
+      openHTML(&acceptfd);
+    } 
+    
+    // send html
+    
+    // reset, clean buffer, and close sockets
+    memset(buffer, 0, sizeof(buffer));
+    shutdown(acceptfd, 0); 
   }
- 
- // send response 
-  int response = response_http(&acceptfd, buffer);
-  printf("response: %i\n", response);
-  if (response == 0){
-    openHTML(&acceptfd);
-  } 
-  
-  // send html
-  
-  // reset, clean buffer, and close sockets
-  memset(buffer, 0, sizeof(buffer));
-  shutdown(acceptfd, 0); 
   shutdown(socketfd, 0); 
   return EXIT_SUCCESS;
 }
@@ -170,6 +175,7 @@ int openHTML(int *acceptfd){
   long file_length = 0;
   // open file
   FILE *fp = fopen("www/index.html", "rb");
+  printf("Path: index.html\n");
   // err check
   if (fp == NULL){
     perror("Error opening file");

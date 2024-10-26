@@ -1,7 +1,8 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#define NUM_THREADS 5
+#include <unistd.h>
+#define NUM_THREADS 7
 
 /*
   Reference:
@@ -9,6 +10,7 @@
 */
 void *PrintHello(void *threadid)
 {
+  sleep(3);
   long tid;
   tid = (long)threadid;
   printf("Hello World! It's me, thread #%ld!\n", tid);
