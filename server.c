@@ -9,9 +9,6 @@
 #include <unistd.h>
 
 
-// THREADS USED
-#define NUM_THREADS 7
-
 // PORT USED
 #define PORT 80
 
@@ -24,55 +21,16 @@
 #define RESPONSE200 "HTTP/1.1 200 OK\r\n\r\n"
 #define RESPONSE400 "HTTP/1.1 400 Not Found\r\n\r\n"
 
+// Function declarations
 int openHTML(int *acceptfd);
 int response_http(int *acceptfd, char *buffer);
-void* counter_pthread(void *s);
-int server_logic();
+void* handle_client(void* arg);
 
 int main(int argc, char *argv[]){
 
-  /*
-    Request GET
-    Response 200 OK
-  */
-  /*
-  char *connected = "Server Connected!"; 
-  int len, bytes_sent;
-  len = strlen(connected);
-  bytes_sent = send(socketfd, connected, len, 0);
-  */
-  // recv() data and print it out
-  
-  // allocate for threads
-  pthread_t thread_id[NUM_THREADS];
-  int rc;
-
+ 
+ 
   // TODO: REFACTOR -> move server logic back into main. And implement threads
-  
-  // loop for multithreading
-  for (int i = 0; i < NUM_THREADS; i++){
-    rc = pthread_create(&thread_id[i], NULL, counter_pthread, NULL);
-    if (rc < 0){
-      perror("Error creating thread");
-      continue;
-    }
-    pthread_detach(thread_id[i]);
-  }
-
-  // close() 
-  return EXIT_SUCCESS;
-
-}
-// counter of thread to start it
-void* counter_pthread(void *s){
-  long tid;
-  tid = (long)s;
-  server_logic();
-  printf("Thread Id: %ld\n", tid);
-  pthread_exit(NULL);
-}
-// create a server
-int server_logic(){
   // create socket()
   int socketfd = socket(AF_INET , SOCK_STREAM, 0);
   if (socketfd < 0){
@@ -103,7 +61,7 @@ int server_logic(){
   }
 
   // listen()
-  int listenfd = listen(socketfd, NUM_THREADS);
+  int listenfd = listen(socketfd, 5);
   if (listenfd < 0){
     perror("listen failed");
     exit(EXIT_FAILURE);
@@ -119,40 +77,58 @@ int server_logic(){
       perror("accept failed");
       exit(EXIT_FAILURE);
     } 
-    // allocate for requests buffer
-    char buffer[1024];
+
+    // create thread to handle client
+   // allocate for threads
+    pthread_t thread_id;
+    int rc;
+    int *sock_ptr = malloc(sizeof(int));
+    *sock_ptr = acceptfd;
+    // create thread
+    rc = pthread_create(&thread_id, NULL, handle_client, (void*) sock_ptr);
+    if (rc < 0){
+      perror("pthread_create failed");
+      exit(EXIT_FAILURE);
+    }
+    // reclaim thread when done (not overloading)
+    pthread_detach(thread_id);
+
+     
+  }
+  shutdown(socketfd, 0); 
+  return EXIT_SUCCESS;
+
+}
+// client handling process
+void *handle_client(void *arg){
+   // allocate for requests buffer
+    char buffer[1024] = {0};
     int len = 1024;
+    int acceptfd = * (int*) arg;
     // recv request
     ssize_t bytes_recv = recv(acceptfd, buffer, len, 0); 
     printf("bytes_recv: %ld\n", bytes_recv);
     if (bytes_recv < 0){
       perror("recv error:");
-      return EXIT_FAILURE;
+      exit(EXIT_FAILURE);
     }
     printf("%s\n", buffer);
-
-    if (bytes_recv < 0){
-      perror("recv failed");
-    }
    
    // send response 
     int response = response_http(&acceptfd, buffer);
     printf("response: %i\n", response);
     if (response == 0){
+    // send html
       openHTML(&acceptfd);
+    } else {
+      perror("response 400");
+      exit(EXIT_FAILURE);
     } 
     
-    // send html
-    
-    // reset, clean buffer, and close sockets
-    memset(buffer, 0, sizeof(buffer));
-    shutdown(acceptfd, 0); 
-  }
-  shutdown(socketfd, 0); 
-  return EXIT_SUCCESS;
+    // close client
+    shutdown(acceptfd, 0);
+    return NULL;
 }
-
-
 
 /* find the pattern in request ; returns 0 if success, 1 if response is 400*/
 int response_http(int *acceptfd, char *buffer){
@@ -170,6 +146,7 @@ int response_http(int *acceptfd, char *buffer){
 
 // open html read, and send it
 int openHTML(int *acceptfd){
+  sleep(20);
 // allocate for buffer
   char *buffer;
   long file_length = 0;
